@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Noteboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1412;
+    --ink-light: #5c4f47;
+    --paper: #faf7f2;
+    --paper-warm: #f2ede3;
+    --cream: #ede8de;
+    --rule: #d9d0c4;
+    --accent: #c0392b;
+    --accent-light: #e8d5d3;
+    --gold: #b8922a;
+    --shadow: rgba(26,20,18,0.1);
+
+    --note-yellow: #fef3c7;
+    --note-green: #d1fae5;
+    --note-blue: #dbeafe;
+    --note-pink: #fce7f3;
+    --note-purple: #ede9fe;
+    --note-default: #f5f0e8;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 27px,
+        var(--rule) 27px,
+        var(--rule) 28px
+      );
+    background-attachment: fixed;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0 2.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  }
+
+  .brand {
+    display: flex; align-items: baseline; gap: 0.5rem;
+  }
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
+    color: var(--paper);
+  }
+  .brand-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 300;
+    color: var(--gold);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid var(--gold);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  .note-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--cream);
+    opacity: 0.6;
+  }
+
+  /* ─── LAYOUT ─── */
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 4rem;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  /* ─── COMPOSER ─── */
+  .composer {
+    position: sticky; top: 88px;
+    background: white;
+    border: 1px solid var(--rule);
+    border-top: 4px solid var(--ink);
+    padding: 1.8rem;
+    box-shadow: 4px 4px 0 var(--cream);
+  }
+
+  .composer-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    margin-bottom: 1.2rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .composer-heading::after {
+    content: '';
+    flex: 1; height: 1px;
+    background: var(--rule);
+  }
+
+  .field { margin-bottom: 1rem; }
+
+  label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    margin-bottom: 0.35rem;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    background: var(--paper-warm);
+    border: 1px solid var(--rule);
+    padding: 0.65rem 0.8rem;
+    outline: none;
+    resize: none;
+    transition: border-color 0.15s, background 0.15s;
+    border-radius: 0;
+  }
+  input[type="text"]:focus, textarea:focus {
+    border-color: var(--ink);
+    background: white;
+  }
+  textarea { min-height: 130px; line-height: 1.7; }
+
+  /* Color picker */
+  .color-picker {
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .color-swatch {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .color-swatch:hover { transform: scale(1.15); }
+  .color-swatch.active { border-color: var(--ink); transform: scale(1.1); }
+
+  /* Buttons */
+  .btn-row {
+    display: flex; gap: 0.75rem; margin-top: 1.3rem;
+  }
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    flex: 1;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn-primary:hover { background: #2d2420; }
+  .btn-primary:active { transform: translate(1px,1px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink-light);
+    border: 1px solid var(--rule);
+  }
+  .btn-secondary:hover { border-color: var(--ink); color: var(--ink); }
+
+  .btn-primary:disabled {
+    opacity: 0.4; cursor: not-allowed;
+  }
+
+  /* ─── NOTES GRID ─── */
+  .notes-area {}
+
+  .notes-toolbar {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-style: italic;
+    color: var(--ink);
+    flex: 1;
+  }
+  .search-box {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    background: white;
+    border: 1px solid var(--rule);
+    padding: 0.45rem 0.75rem;
+    outline: none;
+    width: 180px;
+    color: var(--ink);
+  }
+  .search-box:focus { border-color: var(--ink); }
+
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.2rem;
+  }
+
+  /* ─── NOTE CARD ─── */
+  .note-card {
+    padding: 1.2rem;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.07);
+    position: relative;
+    transition: transform 0.18s, box-shadow 0.18s;
+    cursor: pointer;
+    animation: cardIn 0.3s ease both;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .note-card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 rgba(0,0,0,0.1);
+  }
+  .note-card.editing {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+
+  .note-card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+  }
+  .note-card-content {
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--ink-light);
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
+  .note-card-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 1rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(0,0,0,0.08);
+  }
+  .note-card-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--ink-light);
+    opacity: 0.7;
+  }
+  .note-actions {
+    display: flex; gap: 0.4rem; opacity: 0; transition: opacity 0.15s;
+  }
+  .note-card:hover .note-actions { opacity: 1; }
+  .note-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border: 1px solid rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .note-btn:hover { background: rgba(0,0,0,0.08); }
+  .note-btn.del:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* ─── EMPTY STATE ─── */
+  .empty-state {
+    grid-column: 1/-1;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--ink-light);
+    opacity: 0.5;
+  }
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+  }
+  .empty-state p {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    font-size: 1.05rem;
+  }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1.2rem;
+    box-shadow: 4px 4px 0 var(--accent);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.25s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast.error {
+    box-shadow: 4px 4px 0 #e74c3c;
+  }
+
+  /* ─── LOADING ─── */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 800px) {
+    .page {
+      grid-template-columns: 1fr;
+    }
+    .composer {
+      position: static;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-name">Noteboard</span>
+    <span class="brand-tag">Beta</span>
+  </div>
+  <span class="note-count" id="noteCount">0 notes</span>
+</header>
+
+<div class="page">
+
+  <!-- ── COMPOSER ── -->
+  <aside>
+    <div class="composer">
+      <div class="composer-heading">New Note</div>
+
+      <div class="field">
+        <label for="noteTitle">Title</label>
+        <input type="text" id="noteTitle" placeholder="Give it a title…" maxlength="120" />
+      </div>
+
+      <div class="field">
+        <label for="noteContent">Content</label>
+        <textarea id="noteContent" placeholder="Write something worth remembering…"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Color</label>
+        <div class="color-picker" id="colorPicker">
+          <div class="color-swatch active" data-color="#f5f0e8" style="background:#f5f0e8" title="Parchment"></div>
+          <div class="color-swatch" data-color="#fef3c7" style="background:#fef3c7" title="Amber"></div>
+          <div class="color-swatch" data-color="#d1fae5" style="background:#d1fae5" title="Sage"></div>
+          <div class="color-swatch" data-color="#dbeafe" style="background:#dbeafe" title="Sky"></div>
+          <div class="color-swatch" data-color="#fce7f3" style="background:#fce7f3" title="Rose"></div>
+          <div class="color-swatch" data-color="#ede9fe" style="background:#ede9fe" title="Lavender"></div>
+          <div class="color-swatch" data-color="#fee2e2" style="background:#fee2e2" title="Blush"></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="saveBtn" onclick="saveNote()">Save Note</button>
+        <button class="btn btn-secondary" id="cancelBtn" onclick="cancelEdit()" style="display:none">Cancel</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── NOTES ── -->
+  <main class="notes-area">
+    <div class="notes-toolbar">
+      <h2 class="section-title">Your Notes</h2>
+      <input class="search-box" id="searchBox" type="text" placeholder="Search…" oninput="filterNotes()" />
+    </div>
+    <div class="notes-grid" id="notesGrid">
+      <!-- cards injected here -->
+    </div>
+  </main>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';  // same origin
+
+let notes = [];
+let editingId = null;
+let selectedColor = '#f5f0e8';
+
+// ── Color picker ──
+document.getElementById('colorPicker').addEventListener('click', e => {
+  const swatch = e.target.closest('.color-swatch');
+  if (!swatch) return;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+  swatch.classList.add('active');
+  selectedColor = swatch.dataset.color;
+  if (editingId) renderNotes(); // live preview if editing
+});
+
+// ── Toast ──
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type === 'error' ? ' error' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ── Fetch notes ──
+async function loadNotes() {
+  try {
+    const res = await fetch(`${API}/api/notes`);
+    notes = await res.json();
+    renderNotes();
+  } catch (e) {
+    toast('Could not load notes', 'error');
+  }
+}
+
+// ── Render ──
+function renderNotes() {
+  const query = document.getElementById('searchBox').value.toLowerCase();
+  const grid = document.getElementById('notesGrid');
+  const filtered = notes.filter(n =>
+    n.title.toLowerCase().includes(query) ||
+    n.content.toLowerCase().includes(query)
+  );
+
+  document.getElementById('noteCount').textContent =
+    `${notes.length} note${notes.length !== 1 ? 's' : ''}`;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <span class="empty-state-icon">✎</span>
+      <p>${query ? 'No notes match your search.' : 'Nothing here yet. Write your first note.'}</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(n => `
+    <div class="note-card${editingId === n.id ? ' editing' : ''}"
+         style="background:${n.color}"
+         data-id="${n.id}">
+      <div class="note-card-title">${escHtml(n.title)}</div>
+      <div class="note-card-content">${escHtml(n.content)}</div>
+      <div class="note-card-footer">
+        <span class="note-card-date">${formatDate(n.updated_at)}</span>
+        <div class="note-actions">
+          <button class="note-btn" onclick="startEdit(${n.id})">Edit</button>
+          <button class="note-btn del" onclick="deleteNote(${n.id})">Delete</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterNotes() { renderNotes(); }
+
+// ── Save (create or update) ──
+async function saveNote() {
+  const title = document.getElementById('noteTitle').value.trim();
+  const content = document.getElementById('noteContent').value.trim();
+  if (!title && !content) { toast('Write something first!', 'error'); return; }
+  if (!title) { toast('Add a title', 'error'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner"></span>${editingId ? 'Saving…' : 'Adding…'}`;
+
+  try {
+    const url = editingId ? `${API}/api/notes/${editingId}` : `${API}/api/notes`;
+    const method = editingId ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, color: selectedColor }),
+    });
+    if (!res.ok) throw new Error();
+    const saved = await res.json();
+
+    if (editingId) {
+      notes = notes.map(n => n.id === editingId ? saved : n);
+      toast('Note updated ✓');
+    } else {
+      notes.unshift(saved);
+      toast('Note saved ✓');
+    }
+    resetForm();
+    renderNotes();
+  } catch {
+    toast('Failed to save note', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editingId ? 'Save Changes' : 'Save Note';
+  }
+}
+
+// ── Edit ──
+function startEdit(id) {
+  const n = notes.find(n => n.id === id);
+  if (!n) return;
+  editingId = id;
+  document.getElementById('noteTitle').value = n.title;
+  document.getElementById('noteContent').value = n.content;
+
+  // set color swatch
+  selectedColor = n.color;
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === n.color);
+  });
+
+  document.getElementById('saveBtn').textContent = 'Save Changes';
+  document.getElementById('cancelBtn').style.display = '';
+  document.querySelector('.composer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  renderNotes();
+}
+
+function cancelEdit() {
+  editingId = null;
+  resetForm();
+  renderNotes();
+}
+
+function resetForm() {
+  editingId = null;
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteContent').value = '';
+  selectedColor = '#f5f0e8';
+  document.querySelectorAll('.color-swatch').forEach((s, i) => {
+    s.classList.toggle('active', i === 0);
+  });
+  document.getElementById('saveBtn').textContent = 'Save Note';
+  document.getElementById('cancelBtn').style.display = 'none';
+}
+
+// ── Delete ──
+async function deleteNote(id) {
+  if (!confirm('Delete this note?')) return;
+  try {
+    const res = await fetch(`${API}/api/notes/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error();
+    notes = notes.filter(n => n.id !== id);
+    if (editingId === id) cancelEdit();
+    toast('Note deleted');
+    renderNotes();
+  } catch {
+    toast('Could not delete note', 'error');
+  }
+}
+
+// ── Utils ──
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatDate(iso) {
+  const d = new Date(iso + 'Z');
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) + ' · ' +
+         d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ── Keyboard shortcut ──
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') saveNote();
+  if (e.key === 'Escape' && editingId) cancelEdit();
+});
+
+// ── Boot ──
+loadNotes();
+</script>
+</body>
+</html>
